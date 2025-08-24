@@ -6,6 +6,7 @@ import threading
 import time
 from telebot import types
 from flask import Flask, request
+import numpy as np
 
 # ================= CONFIG =================
 BOT_TOKEN = os.getenv("BOT_TOKEN", "7638935379:AAEmLD7JHLZ36Ywh5tvmlP1F8xzrcNrym_Q")
@@ -17,7 +18,7 @@ ALL_COINS_URL = "https://api.binance.com/api/v3/ticker/24hr"
 KLINES_URL = "https://api.binance.com/api/v3/klines"
 
 bot = telebot.TeleBot(BOT_TOKEN)
-server = Flask(__name__)
+server = Flask(__name__)  # <-- This is the WSGI object Gunicorn will use
 
 # ================= STORAGE =================
 USER_COINS_FILE = "user_coins.txt"
@@ -34,8 +35,6 @@ def save_coins(coins):
             f.write(c + "\n")
 
 # ================= TECHNICAL ANALYSIS =================
-import numpy as np
-
 def get_klines(symbol, interval="15m", limit=100):
     url = f"{KLINES_URL}?symbol={symbol}&interval={interval}&limit={limit}"
     data = requests.get(url, timeout=10).json()
@@ -199,8 +198,8 @@ def webhook():
 def index():
     return "Bot running!", 200
 
+# ================= MAIN =================
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url=WEBHOOK_URL)
-    server.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
-
+    # Do NOT call server.run() here; Gunicorn handles it
