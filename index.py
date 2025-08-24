@@ -9,16 +9,16 @@ from flask import Flask, request
 import numpy as np
 
 # ================= CONFIG =================
-BOT_TOKEN = os.getenv("BOT_TOKEN", "7638935379:AAEmLD7JHLZ36Ywh5tvmlP1F8xzrcNrym_Q")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "7638935379:AAEmLD7JHLZ36Ywh5tvmlP1F8xzrcNrym_Q") 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://shayubott.onrender.com/" + BOT_TOKEN)
-CHAT_ID = int(os.getenv("CHAT_ID", "1263295916"))
+CHAT_ID = int(os.getenv("CHAT_ID", "YOUR_CHAT_ID"))
 
 # Binance API endpoints
 ALL_COINS_URL = "https://api.binance.com/api/v3/ticker/24hr"
 KLINES_URL = "https://api.binance.com/api/v3/klines"
 
 bot = telebot.TeleBot(BOT_TOKEN)
-server = Flask(__name__)  # <-- This is the WSGI object Gunicorn will use
+app = Flask(__name__)  # <-- This is the WSGI object Gunicorn uses
 
 # ================= STORAGE =================
 USER_COINS_FILE = "user_coins.txt"
@@ -91,7 +91,6 @@ def start(msg):
     markup.add("🔄 Reset Settings", "📡 Signals")
     bot.send_message(msg.chat.id, "🤖 Welcome! Choose an option:", reply_markup=markup)
 
-# --- My Coins ---
 @bot.message_handler(func=lambda m: m.text == "📊 My Coins")
 def my_coins(msg):
     coins = load_coins()
@@ -140,7 +139,6 @@ def process_remove_coin(msg):
     else:
         bot.send_message(msg.chat.id, "Coin not found.")
 
-# --- Top Movers ---
 @bot.message_handler(func=lambda m: m.text == "🚀 Top Movers")
 def top_movers(msg):
     data = requests.get(ALL_COINS_URL, timeout=10).json()
@@ -150,7 +148,6 @@ def top_movers(msg):
     movers = "\n".join([f"🪙 {row['symbol']} : {row['priceChangePercent']}%" for _, row in top.iterrows()])
     bot.send_message(msg.chat.id, f"🚀 Top 5 Movers (24h):\n\n{movers}")
 
-# --- Auto Signals Toggle ---
 @bot.message_handler(func=lambda m: m.text == "🤖 Auto Signals")
 def enable_signals(msg):
     global auto_signals_enabled
@@ -163,13 +160,11 @@ def stop_signals(msg):
     auto_signals_enabled = False
     bot.send_message(msg.chat.id, "⛔ Auto signals DISABLED.")
 
-# --- Reset ---
 @bot.message_handler(func=lambda m: m.text == "🔄 Reset Settings")
 def reset_settings(msg):
     save_coins([])
     bot.send_message(msg.chat.id, "🔄 Settings reset. All coins cleared.")
 
-# --- Signals Command ---
 @bot.message_handler(commands=["signals"])
 @bot.message_handler(func=lambda m: m.text == "📡 Signals")
 def signals(msg):
@@ -186,20 +181,20 @@ def signals(msg):
     else:
         bot.send_message(msg.chat.id, "📡 Ultra-Filtered Signals:\n\n" + "\n".join(strong_signals))
 
-# ================= FLASK (WEBHOOK) =================
-@server.route("/" + BOT_TOKEN, methods=["POST"])
+# ================= FLASK WEBHOOK =================
+@app.route("/" + BOT_TOKEN, methods=["POST"])
 def webhook():
     json_str = request.get_data().decode("UTF-8")
     update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "OK", 200
 
-@server.route("/")
+@app.route("/")
 def index():
     return "Bot running!", 200
 
-# ================= MAIN =================
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url=WEBHOOK_URL)
-    # Do NOT call server.run() here; Gunicorn handles it
+    # DO NOT call app.run() when using Gunicorn
+
